@@ -1,6 +1,7 @@
 from math import sin, cos, sqrt, pi
 import numpy as np
 import scipy as sp
+import pandas as pd
 import matplotlib.pyplot as plt
 
 def RK4_for_2nd_order_ODE(fun, h, t, x, x_dot):
@@ -24,8 +25,35 @@ def RK4_for_2nd_order_ODE(fun, h, t, x, x_dot):
     
     return x+dx, x_dot+dx_dot
 
+def get_positions(theta_, phi_, psi_):
+      # position of the butt
+      p1 = np.array((L*sin(theta_) - a*cos(theta_), -L*cos(theta_) - a*sin(theta_)))
+      # position of knees
+      p2 = np.array((L*sin(theta_) + b*cos(theta_), -L*cos(theta_) + b*sin(theta_)))
+      # position of head
+      p3 = p1 + l1*np.array((-sin(theta_+phi_), cos(theta_+phi_)))
+      # position of feet
+      p4 = p2 + l3*np.array((sin(theta_+psi_), -cos(theta_+psi_)))
+        
+      # plot0,=ax.plot([0,L*sin(theta_)],[0,-L*cos(theta_)], color='grey', linewidth=0.5)
+      # plot1,=ax.plot([p1[0],p2[0]],[p1[1],p2[1]], color='black', linewidth=1.5)
+      # plot2,=ax.plot([p1[0],p3[0]],[p1[1],p3[1]], color='black', linewidth=1.5)
+      # plot3,=ax.plot([p2[0],p4[0]],[p2[1],p4[1]], color='black', linewidth=1.5)
+    
+      # center of the mass
+      mc1 = (p1+p3)/2
+      mc2 = (p1+p2)/2
+      mc3 = (p2+p4)/2
+      CM = (m1*mc1 + m2*mc2 + m3*mc3 + M0*np.array((L/2*sin(theta_), -L/2*cos(theta_))))/(M+M0)
+      # plot4,=ax.plot([CM[0]],[CM[1]],marker='o',markersize=1,color='red')
+
+def plot_theta(theta):
+      # drawing theta on plot with its value in degrees
+      ax.plot([1*sin(theta),1.1*sin(theta)], [-1*cos(theta),-1.1*cos(theta)], color='black', linewidth=1)
+      ax.text(1.2*sin(theta), -1.2*cos(theta), f'${np.degrees(theta):.0f}\\degree$', fontsize=8, horizontalalignment="center", verticalalignment="center")
+
 g = 9.8
-t_step = 1/30
+t_step = 1/25
 
 # drag coefficient
 k = 0.4
@@ -93,45 +121,11 @@ elif swinger_strategy == 'papers-model':
 else: # motionless swinger
       alpha = np.radians(0)
 
-# fig, ax = plt.subplots(figsize=(6.4,3.6), dpi=300)
-# ax.set_aspect('equal')
-# ax.set_xlim([-1.5,1.5])
-# ax.set_ylim([-2.5,0])
-# ax.set_xlabel('x (m)')
-# ax.set_ylabel('y (m)')
-# ax.set_title(title, fontsize='medium')
-# fig.tight_layout()
-
-# drawing theta on plot with its value in degrees
-def plot_theta(theta):
-    ax.plot([1*sin(theta),1.1*sin(theta)], [-1*cos(theta),-1.1*cos(theta)], color='black', linewidth=1)
-    ax.text(1.2*sin(theta), -1.2*cos(theta), f'${np.degrees(theta):.0f}\\degree$', fontsize=8, horizontalalignment="center", verticalalignment="center")
-
-def plot_positions():
-    # position of the butt
-    p1 = np.array((L*sin(theta) - a*cos(theta), -L*cos(theta) - a*sin(theta)))
-    # position of knees
-    p2 = np.array((L*sin(theta) + b*cos(theta), -L*cos(theta) + b*sin(theta)))
-    # position of head
-    p3 = p1 + l1*np.array((-sin(theta+phi), cos(theta+phi)))
-    # position of feet
-    p4 = p2 + l3*np.array((sin(theta+psi), -cos(theta+psi)))
-        
-    plot0,=ax.plot([0,L*sin(theta)],[0,-L*cos(theta)], color='grey', linewidth=0.5)
-    plot1,=ax.plot([p1[0],p2[0]],[p1[1],p2[1]], color='black', linewidth=1.5)
-    plot2,=ax.plot([p1[0],p3[0]],[p1[1],p3[1]], color='black', linewidth=1.5)
-    plot3,=ax.plot([p2[0],p4[0]],[p2[1],p4[1]], color='black', linewidth=1.5)
-    
-    # center of the mass
-    mc1 = (p1+p3)/2
-    mc2 = (p1+p2)/2
-    mc3 = (p2+p4)/2
-    CM = (m1*mc1 + m2*mc2 + m3*mc3 + M0*np.array((L/2*sin(theta), -L/2*cos(theta))))/(M+M0)
-    plot4,=ax.plot([CM[0]],[CM[1]],marker='o',markersize=1,color='red')
-    plot5,=ax.plot([mc1[0]],[mc1[1]],marker='o',markersize=1,color='pink')
-    plot6,=ax.plot([mc3[0]],[mc3[1]],marker='o',markersize=1,color='pink')
 i = 0   
-for i in range(swings):
+
+data = []
+
+for n in range(swings):
       # the amplitude of the swing at the back extreme of the cycle - cycle is counted from back extreme
       phi,psi = 0, 0
       A = abs(theta)
@@ -177,32 +171,7 @@ for i in range(swings):
                   phi_ddot = 0
                   psi_ddot = 0
             
-            if i % 2 == 0:
-              # position of the swingers butt
-              p1 = np.array((L*sin(theta)-a*cos(theta), -L*cos(theta)-a*sin(theta)))
-              # position of the swingers knees
-              p2 = np.array((L*sin(theta)+b*cos(theta), -L*cos(theta)+b*sin(theta)))
-              # position of the swingers head
-              p3 = p1 + l1*np.array((-sin(theta+phi), cos(theta+phi)))
-              # position of the swingers feet
-              p4 = p2 + l3*np.array((sin(theta+psi), -cos(theta+psi)))
-            #   plot0,=ax.plot([0,L*sin(theta)],[0,-L*cos(theta)],color='black')
-            #   plot1,=ax.plot([p1[0],p2[0]],[p1[1],p2[1]],color='red')
-            #   plot2,=ax.plot([p1[0],p3[0]],[p1[1],p3[1]],color='green')
-            #   plot3,=ax.plot([p2[0],p4[0]],[p2[1],p4[1]],color='blue')
-            if i % 2 == 0:
-              mid1 = (p1+p3)/2
-              mid2 = (p1+p2)/2
-              mid3 = (p2+p4)/2
-              cm = (m1*mid1 + m2*mid2 + m3*mid3 + M0*np.array((L/2*sin(theta), -L/2*cos(theta))))/(M+M0)
-            #   plot4,=ax.plot([cm[0]],[cm[1]],marker='o',markersize=1,color='red')
-            # if i % 2 == 0:
-            #   plt.draw()
-            #   plt.pause(0.001)
-            #   plot0.remove()
-            #   plot1.remove()
-            #   plot2.remove()
-            #   plot3.remove()
+            data.append({'t': t, 'theta': theta, 'theta_dot': theta_dot, 'phi': phi, 'psi': psi})
             
             theta, theta_dot = RK4_for_2nd_order_ODE(eq_theta_ddot, t_step, t, theta, theta_dot)
             
@@ -210,12 +179,9 @@ for i in range(swings):
             i += 1
              
             if not swingdone and theta_dot < 0:
-              # right extent of swing
-            #   plot_theta(theta)
               swingdone = True
             if swingdone and theta < 0 and theta_dot > 0:
-              # left extent of swing
-            #   plot_theta(theta)
-              print("period: expected=%f actual=%f" % (T_n, t))
               break
-print("theta: %f" % np.degrees(theta))
+
+df = pd.DataFrame(data)
+df.to_csv('sim_data.csv')

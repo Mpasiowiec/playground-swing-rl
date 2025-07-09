@@ -10,21 +10,25 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
 
-path = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.dirname(os.path.abspath(__file__))
 
 parser = argparse.ArgumentParser(
                     prog='Swing_simulation',
                     description='Simulate playground swing, with different strategies of swinging, may return values of angles or gif with visualization')
 
 parser.add_argument('--save_data', action='store_true')
-parser.add_argument('--data_dir', type=str, default=os.path.join(path,'data'))
+parser.add_argument('--data_dir', type=str, default=os.path.join(file_path,'data'))
 parser.add_argument('--off_vis', action='store_false')
-parser.add_argument('--vis_dir', type=str, default=os.path.join(path,'gifs'))
+parser.add_argument('--vis_dir', type=str, default=os.path.join(file_path,'gifs'))
 parser.add_argument('--time_step', type=float, default=1/25)
 parser.add_argument('--strategy', type=str, default='papers-model')
 parser.add_argument('--swings_num', type=int, default=8)
 
 args = parser.parse_args()
+
+# creating dirs
+if args.save_data: os.makedirs(args.data_dir, exist_ok=True)
+if args.off_vis: os.makedirs(args.vis_dir, exist_ok=True)
 
 def RK4_for_2nd_order_ODE(fun, h, t, x, x_dot):
     # RK4 for 2nd order ODE https://math.stackexchange.com/questions/2615672/solve-fourth-order-ode-using-fourth-order-runge-kutta-method

@@ -8,11 +8,6 @@ from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
 
 class PlaygroundSwingEnv(gym.Env):
-    
-    metadata = {
-        "render_modes": ["human", "rgb_array"],
-        "render_fps": 30,
-    }
 
     def __init__(self, render_mode: str | None = None, g=9.8):
 
@@ -66,8 +61,8 @@ class PlaygroundSwingEnv(gym.Env):
         self.clock = None
         self.isopen = True
 
-        # position of swing theta, speed of swing theta_dot, position of torso phi, position of legs psi
-        high = np.array([np.pi, np.inf, self.phi0, self.psi0], dtype=np.float32)
+        # position of swing theta, speed of swing theta_dot (limit full rotation speed of math pendulum), position of torso phi, position of legs psi
+        high = np.array([np.pi, np.sqrt(5*self.L*self.g), self.phi0, self.psi0], dtype=np.float32)
         self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
         
         self.action_space = spaces.Box(
@@ -100,7 +95,7 @@ class PlaygroundSwingEnv(gym.Env):
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
         if options is None:
-            high = np.array([DEFAULT_X, DEFAULT_Y])
+            high = np.array([np.radians(-33), DEFAULT_Y])
         else:
             # Note that if you use custom reset bounds, it may lead to out-of-bound
             # state/observations.

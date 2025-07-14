@@ -1,11 +1,14 @@
 from os import path
 
 import numpy as np
+from math import sin, cos, sqrt, pi
 
 import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
+
+from utils import RK4_for_2nd_order_ODE
 
 class PlaygroundSwingEnv(gym.Env):
 
@@ -41,8 +44,8 @@ class PlaygroundSwingEnv(gym.Env):
         # range of legs position
         self.psi_mean = np.radians(10)
         self.psi0 = np.radians(45)
-        # speed of body movement
-        self.max_body_speed = 1
+        # body torque (form perplexity)
+        self.max_body_torque = 150
 
         # Moments of inertia
         self.I = (self.M0/3 + self.M) * self.L**2
@@ -55,57 +58,99 @@ class PlaygroundSwingEnv(gym.Env):
         self.N = (self.M0/2 + self.M)*self.L
 
         # position of swing theta, speed of swing theta_dot (limit full rotation speed of math pendulum), position of torso phi, position of legs psi
-        high = np.array([np.pi, np.sqrt(5*self.L*self.g), self.phi0, self.psi0], dtype=np.float32)
-        self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
+        high = np.array([pi, sqrt(5*self.L*self.g), self.phi_mean+self.phi0, 25, self.psi_mean+self.psi0, 25], dtype=np.float32)
+        low = np.array([-pi, -sqrt(5*self.L*self.g), self.phi_mean-self.phi0, -25, self.psi_mean-self.psi0, -25], dtype=np.float32)
+        self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
         
         self.action_space = spaces.Box(
-            low=-self.max_body_speed*self.dt, high=self.max_body_speed*self.dt, shape=(2,), dtype=np.float32
+            low=-self.max_body_torque, high=self.max_body_torque, shape=(2,), dtype=np.float32
         )
 
     def step(self, u):
-        theta, theta_dot, phi, psi = self.state
+        theta, theta_dot, phi, phi_dot, psi, psi_dot = self.state
 
         g = self.g
         dt = self.dt
         
+        k = self.k
+        k_prime = self.k_prime
         
+        L = self.L
+        m1 = self.m1
+        m3 = self.m3
 
-        u = np.clip(u, -self.max_torque, self.max_torque)[0]
-        self.last_u = u  # for rendering
-        costs = angle_normalize(th) ** 2 + 0.1 * thdot**2 + 0.001 * (u**2)
+        l1 = self.l1
+        l3   = self.l3  
 
-        newthdot = thdot + (3 * g / (2 * l) * np.sin(th) + 3.0 / (m * l**2) * u) * dt
-        newthdot = np.clip(newthdot, -self.max_speed, self.max_speed)
-        newth = th + newthdot * dt
+        a = self.a
+        b = self.b
 
-        self.state = np.array([newth, newthdot])
+        I = self.I
+        I_prime = self.I_prime
 
-        if self.render_mode == "human":
-            self.render()
+        N = self.N
+
+        # t is "fake" so quantitative method would work
+        def eq_theta_ddot(t, theta, theta_dot):
+            torque =-N*g*sin(theta) \
+                    +m1/2*l1*g*sin(theta+phi) \
+                    -m3/2*l3*g*sin(theta+psi) \
+                    -m1/2*l1*(2/3*l1 - L*cos(phi) + a*sin(phi))*phi_ddot \
+                    -m3/2*l3*(2/3*l3 + L*cos(psi) + b*sin(psi))*psi_ddot \
+                    -m1/2*l1*(L*sin(phi) + a*cos(phi))*(2*theta_dot*phi_dot + phi_dot**2) \
+                    -m3/2*l3*(-L*sin(psi)+ b*cos(psi))*(2*theta_dot*psi_dot + psi_dot**2) \
+                    -k*np.sign(theta_dot)*(theta_dot**2*L**3 + k_prime)
+            return torque/((I+I_prime) + m1*l1*(-L*cos(phi) + a*sin(phi)) + m3*l3*(L*cos(psi) + b*sin(psi)))
+        
+        u = np.clip(u, -self.max_body_torque, self.max_body_torque)
+        
+        # the higher speed the better 
+        reward = theta_dot
+
+        phi_ddot = u[0]
+        psi_ddot = u[1]
+        
+        phi_dot += phi_ddot*dt
+        psi_dot += psi_ddot*dt
+        
+        phi += phi_dot*dt + (phi_ddot*dt**2)/2
+        psi += psi_dot*dt + (psi_ddot*dt**2)/2
+
+        theta, theta_dot = RK4_for_2nd_order_ODE(eq_theta_ddot, dt, dt, theta, theta_dot)
+
+        self.state = np.array([theta, theta_dot, phi, phi_dot, psi, psi_dot])
+
+
         # truncation=False as the time limit is handled by the `TimeLimit` wrapper added during `make`
-        return self._get_obs(), -costs, False, False, {}
+        return self.state, reward, False, False, {}
 
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
         if options is None:
-            high = np.array([np.radians(-33), 0, 0, 0])
-        else:
-            # Note that if you use custom reset bounds, it may lead to out-of-bound
-            # state/observations.
-            
-            theta = options.get("theta_init") if "theta_init" in options else np.radians(-33)
+            theta = np.radians(33)
+            theta_dot = 0
+            phi = self.phi_mean+self.phi0
+            phi_dot = 0
+            psi = self.psi_mean+self.psi0
+            psi_dot = 0
+        else:            
+            theta = options.get("theta_init") if "theta_init" in options else np.radians(33)
             theta_dot = options.get("theta_dot_init") if "theta_dot_init" in options else 0
-            phi = options.get("phi_init") if "phi_init" in options else 0
-            psi = options.get("psi_init") if "psi_init" in options else 0
+            phi = options.get("phi_init") if "phi_init" in options else self.phi_mean+self.phi0
+            phi_dot = options.get("phi_dot_init") if "phi_dot_init" in options else 0
+            psi = options.get("psi_init") if "psi_init" in options else self.psi_mean+self.psi0
+            psi_dot = options.get("psi_dot_init") if "psi_dot_init" in options else 0
             
             theta = utils.verify_number_and_cast(theta)
             theta_dot = utils.verify_number_and_cast(theta_dot)
             phi = utils.verify_number_and_cast(phi)
+            phi_dot = utils.verify_number_and_cast(phi_dot)
             psi = utils.verify_number_and_cast(psi)
+            psi_dot = utils.verify_number_and_cast(psi_dot)
             
-            high = np.array([theta, theta_dot, phi, psi])
-        low = -high  # We enforce symmetric limits.
+        high = np.array([theta, theta_dot, phi, phi_dot, psi, psi_dot])
+        low = np.array([-theta, -theta_dot, phi-2*self.phi0, -phi_dot, psi-2*self.psi0, -psi_dot])
         self.state = self.np_random.uniform(low=low, high=high)
         self.last_u = None
 
-        return np.array([theta, theta_dot, phi, psi], dtype=np.float32), {}
+        return np.array(self.state, dtype=np.float32), {}

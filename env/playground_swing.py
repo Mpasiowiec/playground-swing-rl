@@ -52,14 +52,7 @@ class PlaygroundSwingEnv(gym.Env):
                        +(self.m1*self.m3 - self.m2**2/4) \
                            *self.l2**2/self.M
 
-        N = (self.M0/2 + self.M)*self.L
-
-        self.render_mode = render_mode
-
-        self.screen_dim = 500
-        self.screen = None
-        self.clock = None
-        self.isopen = True
+        self.N = (self.M0/2 + self.M)*self.L
 
         # position of swing theta, speed of swing theta_dot (limit full rotation speed of math pendulum), position of torso phi, position of legs psi
         high = np.array([np.pi, np.sqrt(5*self.L*self.g), self.phi0, self.psi0], dtype=np.float32)
@@ -70,12 +63,12 @@ class PlaygroundSwingEnv(gym.Env):
         )
 
     def step(self, u):
-        th, thdot = self.state  # th := theta
+        theta, theta_dot, phi, psi = self.state
 
         g = self.g
-        m = self.m
-        l = self.l
         dt = self.dt
+        
+        
 
         u = np.clip(u, -self.max_torque, self.max_torque)[0]
         self.last_u = u  # for rendering
@@ -116,6 +109,3 @@ class PlaygroundSwingEnv(gym.Env):
         self.last_u = None
 
         return np.array([theta, theta_dot, phi, psi], dtype=np.float32), {}
-
-def angle_normalize(x):
-    return ((x + np.pi) % (2 * np.pi)) - np.pi

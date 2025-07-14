@@ -95,20 +95,27 @@ class PlaygroundSwingEnv(gym.Env):
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
         if options is None:
-            high = np.array([np.radians(-33), DEFAULT_Y])
+            high = np.array([np.radians(-33), 0, 0, 0])
         else:
             # Note that if you use custom reset bounds, it may lead to out-of-bound
             # state/observations.
-            x = options.get("x_init") if "x_init" in options else DEFAULT_X
-            y = options.get("y_init") if "y_init" in options else DEFAULT_Y
-            x = utils.verify_number_and_cast(x)
-            y = utils.verify_number_and_cast(y)
-            high = np.array([x, y])
+            
+            theta = options.get("theta_init") if "theta_init" in options else np.radians(-33)
+            theta_dot = options.get("theta_dot_init") if "theta_dot_init" in options else 0
+            phi = options.get("phi_init") if "phi_init" in options else 0
+            psi = options.get("psi_init") if "psi_init" in options else 0
+            
+            theta = utils.verify_number_and_cast(theta)
+            theta_dot = utils.verify_number_and_cast(theta_dot)
+            phi = utils.verify_number_and_cast(phi)
+            psi = utils.verify_number_and_cast(psi)
+            
+            high = np.array([theta, theta_dot, phi, psi])
         low = -high  # We enforce symmetric limits.
         self.state = self.np_random.uniform(low=low, high=high)
         self.last_u = None
 
-        return self._get_obs(), {}
+        return np.array([theta, theta_dot, phi, psi], dtype=np.float32), {}
 
 def angle_normalize(x):
     return ((x + np.pi) % (2 * np.pi)) - np.pi

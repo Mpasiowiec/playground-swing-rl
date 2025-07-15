@@ -8,7 +8,7 @@ from gymnasium import spaces
 from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
 
-from utils import RK4_for_2nd_order_ODE
+from .utils import RK4_for_2nd_order_ODE
 
 class PlaygroundSwingEnv(gym.Env):
 
@@ -109,7 +109,7 @@ class PlaygroundSwingEnv(gym.Env):
         u = np.clip(u, -self.max_body_accel, self.max_body_accel)
         
         # the higher speed the better 
-        reward = theta_dot
+        reward = theta_dot**2
 
         phi_ddot = u[0]
         psi_ddot = u[1]
@@ -141,7 +141,7 @@ class PlaygroundSwingEnv(gym.Env):
         
         theta, theta_dot = RK4_for_2nd_order_ODE(eq_theta_ddot, dt, dt, theta, theta_dot)
 
-        self.state = np.array([theta, theta_dot, phi, phi_dot, psi, psi_dot])
+        self.state = np.array([theta, theta_dot, phi, phi_dot, psi, psi_dot], dtype=np.float32)
 
 
         # truncation=False as the time limit is handled by the `TimeLimit` wrapper added during `make`

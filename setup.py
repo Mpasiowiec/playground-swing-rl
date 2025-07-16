@@ -11,6 +11,7 @@ setup(name='psrl',
             'scipy==1.10.1',
             'pandas==2.2.2',
             'gymnasium==1.1.1',
+            'pygame==2.6.1'
       ],
       extras_require={
             "dev": [

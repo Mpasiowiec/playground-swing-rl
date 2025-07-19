@@ -4,7 +4,7 @@ import playground_swing_rl.env.playground_swing
 
 def test_custom_env_compliance():
     env = gym.make("PlaygroundSwingEnv-v0")
-    check_env(env)
+    check_env(env.unwrapped)
 
 def test_random_steps():
     env = gym.make("PlaygroundSwingEnv-v0")

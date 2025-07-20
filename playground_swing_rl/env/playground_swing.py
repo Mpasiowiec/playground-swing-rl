@@ -15,10 +15,17 @@ import imageio
 
 class PlaygroundSwingEnv(gym.Env):
 
-    def __init__(self, render_mode: str | None = None, g=9.8):
+    def __init__(self, render_mode: str | None = None, g=9.8, goal='speed', target_angle=np.radians(45)):
 
         self.render_mode = render_mode
         self.data = {"theta": [], "theta_dot": [], "phi": [], "psi": [], "t": [], "phi_dot": [], "psi_dot": []}
+        
+        self.goal = goal
+        self.target_angle = target_angle
+        self.swing_count = 0 # for goal rotation
+        self.last_theta_sign = None
+        self.full_rotation_count = 0  # for goal rotation
+        
         self.t = 0.0
         self.dt = 0.05
         self.g = g
@@ -99,9 +106,36 @@ class PlaygroundSwingEnv(gym.Env):
         N = self.N
 
         u = np.clip(u, -1, 1)
-                
-        # the higher speed the better
-        reward = theta_dot**2
+        
+        terminated = False
+        if self.goal == 'speed':
+            reward = theta_dot**2
+
+        elif self.goal == 'angle':
+            reward = -abs(abs(theta) - self.target_angle)
+            current_sign = np.sign(theta - self.target_angle)
+            if self.last_theta_sign is not None and current_sign != 0:
+                if current_sign != self.last_theta_sign:
+                    self.swing_count += 1
+            self.last_theta_sign = current_sign
+            if self.swing_count >= 4:
+                terminated = True
+
+        elif self.goal == 'rotation':
+            reward = theta**2
+            current_sign = np.sign(theta)
+            if self.last_theta_sign is not None:
+                # rotation - thetat going from pi to -pi
+                if (self.last_theta_sign > 0 and current_sign < 0) or (self.last_theta_sign < 0 and current_sign > 0):
+                    self.full_rotation_count += 1
+                    # two rotations with going back to the bottom
+                    if self.full_rotation_count == 2 and theta<1e-1:
+                        terminated = True
+            self.last_theta_sign = current_sign
+
+        else:
+            reward = theta_dot**2  # domyślnie, jeśli złe wywołanie  
+
 
         phi_ddot = u[0] * self.max_body_accel
         psi_ddot = u[1] * self.max_body_accel
@@ -172,7 +206,7 @@ class PlaygroundSwingEnv(gym.Env):
         self.data["t"].append(self.t)
 
         # truncation=False as the time limit is handled by the `TimeLimit` wrapper added during `make`
-        return self.state, reward, False, False, {}
+        return self.state, reward, terminated, False, {}
 
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
@@ -201,7 +235,9 @@ class PlaygroundSwingEnv(gym.Env):
             
             self.state = np.array([theta, theta_dot, phi, phi_dot, psi, psi_dot])
         
-        self.last_u = None
+        self.swing_count = 0
+        self.last_theta_sign = None
+        self.full_rotation_count = 0
         self.t = 0.0
         self.data = {"theta": [], "theta_dot": [], "phi": [], "psi": [], "t": [], "phi_dot": [], "psi_dot": []}
         if self.render_mode in ["human", "human-plots"]:

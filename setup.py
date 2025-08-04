@@ -8,10 +8,11 @@ setup(name='psrl',
             'ipykernel==6.28.0',
             'numpy==1.23.5',
             'matplotlib==3.7.0',
-            'scipy==1.10.1',
+            'scipy',
             'pandas==2.2.2',
             'gymnasium==1.1.1',
-            'imageio==2.37.0'
+            'imageio==2.37.0',
+            'stable-baselines3'
       ],
       extras_require={
             "dev": [

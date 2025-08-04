@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import numpy as np
 from math import sin, cos, pi
@@ -15,6 +16,12 @@ import imageio
 
 class PlaygroundSwingEnv(gym.Env):
 
+    metadata = {
+        "render_modes": ["human","human-plots", "rgb_array", "rgb_array-plots"],
+        "render_fps": 25,
+        "goals": ["speed", "angle", "rotation"]
+                }
+    
     def __init__(self, render_mode: str | None = None, g=9.8, goal='speed', target_angle=np.radians(45)):
 
         self.render_mode = render_mode
@@ -22,8 +29,6 @@ class PlaygroundSwingEnv(gym.Env):
         
         self.goal = goal
         self.target_angle = target_angle
-        self.swing_count = 0 # for goal rotation
-        self.last_theta_sign = None
         self.full_rotation_count = 0  # for goal rotation
         
         self.t = 0.0
@@ -62,7 +67,7 @@ class PlaygroundSwingEnv(gym.Env):
         self.psi_max = self.psi_mean + self.psi0
         self.psi_min = self.psi_mean - self.psi0
         # body angular acceleration
-        self.max_body_accel = 8
+        self.max_body_accel = 4
 
         # Moments of inertia
         self.I = (self.M0/3 + self.M) * self.L**2
@@ -107,61 +112,66 @@ class PlaygroundSwingEnv(gym.Env):
 
         u = np.clip(u, -1, 1)
         
+        # update inital speed to the max speed in first swing
+        if not self.crossed_zero and theta * self.last_theta > 0:
+            pass
+        elif not self.crossed_zero and theta * self.last_theta <= 0:
+            self.initial_speed = abs(theta_dot)
+            self.crossed_zero = True
+                
+        
         terminated = False
         if self.goal == 'speed':
-            reward = theta_dot**2
-
+            # reward for increasing speed
+            speed_increase = abs(theta_dot) - abs(self.initial_speed)
+            reward = max(speed_increase, 0)
+            if self.t > 20: terminated = True
         elif self.goal == 'angle':
-            reward = -abs(abs(theta) - self.target_angle)
-            current_sign = np.sign(theta - self.target_angle)
-            if self.last_theta_sign is not None and current_sign != 0:
-                if current_sign != self.last_theta_sign:
-                    self.swing_count += 1
-            self.last_theta_sign = current_sign
-            if self.swing_count >= 4:
-                terminated = True
-
+            # reward for staying between +/-target angele and bonus for getting closer to it
+            if abs(theta) < self.target_angle:
+                bonus = 1 - (self.target_angle - abs(theta)) / self.target_angle
+                reward = 1 + 10*bonus
+            else:
+                reward = -10
+            if self.t > 20: terminated = True
         elif self.goal == 'rotation':
-            reward = theta**2
+            # reward for incresing angle discouted by initial speed and bonus performing rotation
+            reward = abs(theta) / (abs(self.initial_speed) + 1e-6)
             current_sign = np.sign(theta)
-            if self.last_theta_sign is not None:
-                # rotation - thetat going from pi to -pi
-                if (self.last_theta_sign > 0 and current_sign < 0) or (self.last_theta_sign < 0 and current_sign > 0):
-                    self.full_rotation_count += 1
-                    # two rotations with going back to the bottom
-                    if self.full_rotation_count == 2 and theta<1e-1:
-                        terminated = True
-            self.last_theta_sign = current_sign
-
-        else:
-            reward = theta_dot**2  # domyślnie, jeśli złe wywołanie  
-
+            # rotation - thetat going from pi to -pi
+            if ((self.last_theta > 0 and current_sign < 0) or (self.last_theta < 0 and current_sign > 0)) and abs(theta)>np.radians(90):
+                self.full_rotation_count += 1
+                reward += 10
+            # two rotations with going back to the bottom
+            if self.full_rotation_count > 1 and abs(theta) < np.radians(45):
+                terminated = True
+        self.last_theta = theta
 
         phi_ddot = u[0] * self.max_body_accel
         psi_ddot = u[1] * self.max_body_accel
         
         # # if accel or speed would get body position out of bound then its zero
-        phi_uper_border = abs(phi - (self.phi_max)) < 1e-6 
-        phi_lower_border = abs(phi - (self.phi_min)) < 1e-6
-        psi_uper_border = abs(psi - (self.psi_max)) < 1e-6
-        psi_lower_border = abs(psi - (self.psi_min)) < 1e-6
+        phi_uper_border = abs(phi - (self.phi_max)) < 1e-2
+        phi_lower_border = abs(phi - (self.phi_min)) < 1e-2
+        psi_uper_border = abs(psi - (self.psi_max)) < 1e-2
+        psi_lower_border = abs(psi - (self.psi_min)) < 1e-2
         
         if ((phi_ddot > 0 and phi_uper_border) or (phi_ddot < 0 and phi_lower_border)):
-            phi_ddot=0
+            phi_ddot = 0
+            phi_dot=0
         if ((psi_ddot > 0 and psi_uper_border) or  (psi_ddot < 0 and psi_lower_border)):
             psi_ddot=0
-                
+            psi_dot=0
+            
         phi_dot += phi_ddot*dt
         psi_dot += psi_ddot*dt
-               
-        if ((phi_dot > 0 and phi_uper_border) or (phi_dot < 0 and phi_lower_border)):
-            phi_dot=0
-        if ((psi_dot > 0 and psi_uper_border) or (psi_dot < 0 and psi_lower_border)):
-            psi_dot=0
+        
+        phi += phi_dot*dt + (phi_ddot*dt**2)/2
+        psi += psi_dot*dt + (psi_ddot*dt**2)/2
         
         # cliping to observation space
-        phi = np.clip(phi + phi_dot*dt + (phi_ddot*dt**2)/2, self.phi_min, self.phi_max)
-        psi = np.clip(psi + psi_dot*dt + (psi_ddot*dt**2)/2, self.psi_min, self.psi_max)
+        phi = np.clip(phi, self.phi_min, self.phi_max)
+        psi = np.clip(psi, self.psi_min, self.psi_max)
         
         # t is "fake" so quantitative method would work
         def eq_theta_ddot(t, theta, theta_dot):
@@ -211,10 +221,10 @@ class PlaygroundSwingEnv(gym.Env):
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
         if options is None:
-            theta = np.radians(33)
-            theta_dot = 0
-            phi_dot = 0
-            psi_dot = 0
+            theta = pi - 0.001
+            theta_dot = 0 # no need for initial speed
+            phi_dot = self.phi0 # seems resenoable
+            psi_dot = self.psi0 # seems resenoable
             high = np.array([theta, theta_dot, self.phi_max, phi_dot, self.psi_max, psi_dot])
             low = np.array([-theta, -theta_dot, self.phi_min, -phi_dot, self.psi_min, -psi_dot])
             self.state = self.np_random.uniform(low=low, high=high)
@@ -235,10 +245,11 @@ class PlaygroundSwingEnv(gym.Env):
             
             self.state = np.array([theta, theta_dot, phi, phi_dot, psi, psi_dot])
         
-        self.swing_count = 0
-        self.last_theta_sign = None
+        self.last_theta = self.state[0]
         self.full_rotation_count = 0
         self.t = 0.0
+        self.initial_speed = 5 # its upadete when theta gets to 0 for the first time so its virutal and high at the beging not to impact reward
+        self.crossed_zero = False
         self.data = {"theta": [], "theta_dot": [], "phi": [], "psi": [], "t": [], "phi_dot": [], "psi_dot": []}
         if self.render_mode in ["human", "human-plots"]:
             self.render()
@@ -246,7 +257,7 @@ class PlaygroundSwingEnv(gym.Env):
         return np.array(self.state, dtype=np.float32), {}
 
     def _init_figure(self):
-        if self.render_mode in ['human-plots', 'gif-plots']:
+        if self.render_mode in ['human-plots', 'rgb_array-plots']:
             self.fig = plt.figure(figsize=(12, 8))
             gs = gridspec.GridSpec(2, 2, height_ratios=[1, 1])
             self.ax_phase = self.fig.add_subplot(gs[0, 0])
@@ -282,12 +293,13 @@ class PlaygroundSwingEnv(gym.Env):
         self.cm_history_y = []
         self.alphas = np.linspace(0.1, 1.0, self.cm_dots_trail)
         self.cm_scatter = self.ax_swing.scatter([], [], c='r', s=20)
+        self.change_yaxis_swing = True
 
     def render(self):
         if not hasattr(self, 'fig'):
             self.cm_dots_trail = 50
             self._init_figure()
-        if self.render_mode in ["human-plots", "gif-plots"]:
+        if self.render_mode in ["human-plots", "rgb_array-plots"]:
             # Update phase plot
             self.phase_line.set_data(self.data["theta"], self.data["theta_dot"])
             self.ax_phase.relim() # Recompute the data limits based on current artists.
@@ -299,6 +311,8 @@ class PlaygroundSwingEnv(gym.Env):
             self.ax_theta_phi.relim()
             self.ax_theta_phi.autoscale_view()
 
+        if self.change_yaxis_swing and abs(self.state[0]) > pi/2: self.ax_swing.set_ylim([-2.5, 2.5])
+        
         s1, s2, p1, p2, p3, p4, CM = self._get_positions(self.state)
         
         # Update line data
@@ -319,30 +333,15 @@ class PlaygroundSwingEnv(gym.Env):
         colors = [(1, 0, 0, a) for a in alphas]
         self.cm_scatter.set_facecolor(colors)
 
-        if self.render_mode in ["gif", "gif-plots"]:
-                if not hasattr(self, 'frames_dir'):
-                    self.frames_dir = "frames_tmp"
-                    os.makedirs(self.frames_dir, exist_ok=True)
-                    self.frame_counter = 0
-                frame_path = os.path.join(self.frames_dir, f"frame_{self.frame_counter:05d}.png")
-                self.fig.savefig(frame_path, dpi=72)
-                self.frame_counter += 1
+        if "pytest" in sys.modules: return
+        
+        if self.render_mode in ["rgb_array", "rgb_array-plots"]:
+            self.fig.canvas.draw()
+            width, height = self.fig.canvas.get_width_height()
+            image = np.frombuffer(self.fig.canvas.tostring_rgb(), dtype='uint8').reshape(height, width, 3)
+            return image        
         else:
-            plt.pause(0.001)
-
-    def save_gif_from_frames(self, filename="swing.gif", duration=0.04):
-        if not hasattr(self, 'frames_dir'):
-            print("No frames to convert to gif.")
-            return
-        frames_dir = getattr(self, 'frames_dir', "frames_tmp")
-        # Zbierz i posortuj ścieżki do plików klatek
-        frame_files = [os.path.join(frames_dir, f) for f in sorted(os.listdir(frames_dir)) if f.endswith('.png')]
-        with imageio.get_writer(filename, mode='I', duration=duration) as writer:
-            for frame_file in frame_files:
-                image = imageio.imread(frame_file)
-                writer.append_data(image)
-        print(f"GIF saved as {filename} from {len(frame_files)} frames.")
-        shutil.rmtree(self.frames_dir)
+            plt.pause(1/self.metadata['render_fps'])
 
     def _get_positions(self, state):
         # position of swing's chain's ends

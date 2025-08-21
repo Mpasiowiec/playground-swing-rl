@@ -12,24 +12,18 @@ from .utils import RK4_for_2nd_order_ODE
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-import imageio
 
 class PlaygroundSwingEnv(gym.Env):
 
     metadata = {
-        "render_modes": ["human","human-plots", "rgb_array", "rgb_array-plots"],
-        "render_fps": 25,
-        "goals": ["speed", "angle", "rotation"]
+        "render_modes": ["human","human_plots", "rgb_array", "rgb_array_plots"],
+        "render_fps": 20, # 1/self.dt
                 }
     
-    def __init__(self, render_mode: str | None = None, g=9.8, goal='speed', target_angle=np.radians(45)):
+    def __init__(self, render_mode: str | None = None, g=9.8):
 
         self.render_mode = render_mode
         self.data = {"theta": [], "theta_dot": [], "phi": [], "psi": [], "t": [], "phi_dot": [], "psi_dot": []}
-        
-        self.goal = goal
-        self.target_angle = target_angle
-        self.full_rotation_count = 0  # for goal rotation
         
         self.t = 0.0
         self.dt = 0.05
@@ -121,30 +115,11 @@ class PlaygroundSwingEnv(gym.Env):
                 
         
         terminated = False
-        if self.goal == 'speed':
-            # reward for increasing speed
-            speed_increase = abs(theta_dot) - abs(self.initial_speed)
-            reward = max(speed_increase, 0)
-            if self.t > 20: terminated = True
-        elif self.goal == 'angle':
-            # reward for staying between +/-target angele and bonus for getting closer to it
-            if abs(theta) < self.target_angle:
-                bonus = 1 - (self.target_angle - abs(theta)) / self.target_angle
-                reward = 1 + 10*bonus
-            else:
-                reward = -10
-            if self.t > 20: terminated = True
-        elif self.goal == 'rotation':
-            # reward for incresing angle discouted by initial speed and bonus performing rotation
-            reward = abs(theta) / (abs(self.initial_speed) + 1e-6)
-            current_sign = np.sign(theta)
-            # rotation - thetat going from pi to -pi
-            if ((self.last_theta > 0 and current_sign < 0) or (self.last_theta < 0 and current_sign > 0)) and abs(theta)>np.radians(90):
-                self.full_rotation_count += 1
-                reward += 10
-            # two rotations with going back to the bottom
-            if self.full_rotation_count > 1 and abs(theta) < np.radians(45):
-                terminated = True
+        # reward for increasing speed
+        speed_increase = abs(theta_dot) - abs(self.initial_speed)
+        reward = max(speed_increase, 0)
+        if self.t > 20:
+            terminated = True
         self.last_theta = theta
 
         phi_ddot = u[0] * self.max_body_accel
@@ -221,19 +196,19 @@ class PlaygroundSwingEnv(gym.Env):
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
         if options is None:
-            theta = pi - 0.001
+            theta = pi/2
             theta_dot = 0 # no need for initial speed
-            phi_dot = self.phi0 # seems resenoable
-            psi_dot = self.psi0 # seems resenoable
-            high = np.array([theta, theta_dot, self.phi_max, phi_dot, self.psi_max, psi_dot])
-            low = np.array([-theta, -theta_dot, self.phi_min, -phi_dot, self.psi_min, -psi_dot])
+            phi_dot = 0
+            psi_dot = 0
+            high = np.array([theta, theta_dot, self.phi_mean, phi_dot, self.psi_mean, psi_dot])
+            low = np.array([-theta, -theta_dot, self.phi_mean, -phi_dot, self.psi_mean, -psi_dot])
             self.state = self.np_random.uniform(low=low, high=high)
         else:            
             theta = np.radians(options.get("theta")) if "theta" in options else np.radians(-33)
             theta_dot = options.get("theta_dot") if "theta_dot" in options else 0
-            phi = options.get("phi") if "phi" in options else self.phi_min
+            phi = options.get("phi") if "phi" in options else self.phi_mean
             phi_dot = options.get("phi_dot") if "phi_dot" in options else 0
-            psi = options.get("psi") if "psi" in options else self.psi_max
+            psi = options.get("psi") if "psi" in options else self.psi_mean
             psi_dot = options.get("psi_dot") if "psi_dot" in options else 0
             
             theta = utils.verify_number_and_cast(theta)
@@ -251,17 +226,27 @@ class PlaygroundSwingEnv(gym.Env):
         self.initial_speed = 5 # its upadete when theta gets to 0 for the first time so its virutal and high at the beging not to impact reward
         self.crossed_zero = False
         self.data = {"theta": [], "theta_dot": [], "phi": [], "psi": [], "t": [], "phi_dot": [], "psi_dot": []}
-        if self.render_mode in ["human", "human-plots"]:
+        if self.render_mode in ["human", "human_plots"]:
             self.render()
 
         return np.array(self.state, dtype=np.float32), {}
 
     def _init_figure(self):
-        if self.render_mode in ['human-plots', 'rgb_array-plots']:
+        if self.render_mode in ['human_plots', 'rgb_array_plots']:
             self.fig = plt.figure(figsize=(12, 8))
             gs = gridspec.GridSpec(2, 2, height_ratios=[1, 1])
+            
             self.ax_phase = self.fig.add_subplot(gs[0, 0])
+            self.ax_phase.set_title('Phase digaram', fontsize='medium')
+            self.ax_phase.set_xlabel(r'$\theta$ (rad)')
+            self.ax_phase.set_ylabel(r'$\dot \theta$ (rad/s)')
+            self.ax_phase.grid()
+            
             self.ax_theta_phi = self.fig.add_subplot(gs[0, 1])
+            self.ax_theta_phi.set_title('Body positions vs Swing position', fontsize='medium')
+            self.ax_theta_phi.set_xlabel('t (s)')
+            self.ax_theta_phi.set_ylabel(r'$\theta, \phi, \psi$ (rad)')
+            self.ax_theta_phi.grid()
             self.ax_swing = self.fig.add_subplot(gs[1, :])
             # Set fixed axis limits for phase plot and theta/phi vs time
             # self.ax_phase.set_xlim([-1.4, 1.4])  # theta
@@ -270,9 +255,9 @@ class PlaygroundSwingEnv(gym.Env):
             # self.ax_theta_phi.set_ylim([-1.4, 1.4])  # theta/phi
             # Initialize lines for plots
             self.phase_line, = self.ax_phase.plot([], [], 'b-')
-            self.theta_line, = self.ax_theta_phi.plot([], [], 'b-', label='theta')
-            self.phi_line, = self.ax_theta_phi.plot([], [], 'y-', label='phi')
-            self.psi_line, = self.ax_theta_phi.plot([], [], 'm-', label='psi')
+            self.theta_line, = self.ax_theta_phi.plot([], [], 'b-', label=r'$\theta$')
+            self.phi_line, = self.ax_theta_phi.plot([], [], 'y-', label=r'$\phi$')
+            self.psi_line, = self.ax_theta_phi.plot([], [], 'm-', label=r'$\psi$')
             self.ax_theta_phi.legend()
         else:
             self.fig, self.ax_swing = plt.subplots(figsize=(12, 8))
@@ -299,7 +284,7 @@ class PlaygroundSwingEnv(gym.Env):
         if not hasattr(self, 'fig'):
             self.cm_dots_trail = 50
             self._init_figure()
-        if self.render_mode in ["human-plots", "rgb_array-plots"]:
+        if self.render_mode in ["human_plots", "rgb_array_plots"]:
             # Update phase plot
             self.phase_line.set_data(self.data["theta"], self.data["theta_dot"])
             self.ax_phase.relim() # Recompute the data limits based on current artists.
@@ -332,10 +317,8 @@ class PlaygroundSwingEnv(gym.Env):
         alphas = self.alphas[-curr_len:]
         colors = [(1, 0, 0, a) for a in alphas]
         self.cm_scatter.set_facecolor(colors)
-
-        if "pytest" in sys.modules: return
         
-        if self.render_mode in ["rgb_array", "rgb_array-plots"]:
+        if self.render_mode in ["rgb_array", "rgb_array_plots"]:
             self.fig.canvas.draw()
             width, height = self.fig.canvas.get_width_height()
             image = np.frombuffer(self.fig.canvas.tostring_rgb(), dtype='uint8').reshape(height, width, 3)

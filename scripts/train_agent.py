@@ -1,6 +1,5 @@
 import os
 import argparse
-import datetime
 
 import gymnasium as gym
 import stable_baselines3
@@ -12,10 +11,9 @@ from playground_swing_rl.env.playground_swing import PlaygroundSwingEnv
 
 # Create directories to hold models and logs
 model_dir = "models"
-log_dir = "logs"
+log_dir = "models/logs"
 os.makedirs(model_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
-
 
 def train():
 
@@ -52,48 +50,23 @@ def train():
         name_prefix='checkpoint'
     )
 
-    
     model.learn(
         total_timesteps=int(1e10),
         tb_log_name=f"{args.gymenv}_{args.sb3_algo}",
         callback=[eval_callback, checkpoint_callback],
         )
 
-def test(model_name):        
-    model = sb3_class.load(
-        os.path.join(model_dir, f"{args.gymenv}_{args.sb3_algo}_{model_name}"),
-        env=env
-        )
-
-    obs = env.reset(options={'theta':0, 'theta_dot':0})[0]   
-    
-    while True:
-        action, _ = model.predict(obs)
-        obs, _, terminated, truncated, _ = env.step(action)
-        if terminated or truncated:
-            break
-
-
 if __name__ == '__main__':
-
     # Parse command line inputs
-    parser = argparse.ArgumentParser(description='Train or test model.')
+    parser = argparse.ArgumentParser(description='Train model.')
     parser.add_argument('--gymenv', help='Gymnasium environment i.e. Humanoid-v4', default='PlaygroundSwingEnv-v0')
     parser.add_argument('--sb3_algo', help='StableBaseline3 RL algorithm i.e. A2C, DDPG, PPO, SAC, TD3', default='A2C')    
-    parser.add_argument('--test', help='Test mode', action='store_true')
-    parser.add_argument('--test_model', help='Which model to test', default='1/best_model')
     args = parser.parse_args()
 
     sb3_class = getattr(stable_baselines3, args.sb3_algo)
-
-    if args.test:
-        env = gym.make(args.gymenv, render_mode='human-plots')
-        # recording_dir = f"vid/vid_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        # os.makedirs(recording_dir)
-        # env = gym.wrappers.RecordVideo(env, video_folder=recording_dir, episode_trigger=lambda x: True, name_prefix="test")
-        test(args.test_model)
-    else:
-        env = gym.make(args.gymenv)
-        env = Monitor(env)
-        train()
+    env = gym.make(args.gymenv)
+    env = Monitor(env)
+    
+    train()
+    
     env.close()

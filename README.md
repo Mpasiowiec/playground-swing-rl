@@ -19,12 +19,11 @@ python -m venv .venv
 # 3) Install
 pip install --upgrade pip
 pip install -e .
-pip install stable-baselines3[extra] gymnasium matplotlib numpy
 # Reproducible install
 pip install -r requirements.txt
 
 # 4) Run a demo
-python scripts/demo.py --strategy ffm --episodes 1 --render rgb_array_plots --save gifs/
+python scripts/demo.py --strategy ffm --episodes 1 --render human
 # Or use a trained model (adjust path if different)
 python scripts/demo.py --strategy trained --sb3_algo A2C --model_dir models\PlaygroundSwingEnv-v0_A2C_1\best_model.zip --render rgb_array_plots --episodes 1 --save gifs/
 ```

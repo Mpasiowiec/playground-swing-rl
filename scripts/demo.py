@@ -31,13 +31,14 @@ if __name__ == '__main__':
     # Create environment with specified render mode
     env = gymnasium.make("PlaygroundSwingEnv-v0", render_mode=args.render)
 
-    # Wrap environment to record videos, saving to specified folder with custom prefix
-    # Recording every episode by default (episode_trigger=lambda e: True)
-    env = RecordVideo(env,
-                      video_folder=args.save,
-                      name_prefix=f'{args.strategy}-video',
-                      episode_trigger=lambda e: True,
-                      disable_logger=True)
+    if args.render in ["rgb_array", "rgb_array_plots"]:
+        # Wrap environment to record videos, saving to specified folder with custom prefix
+        # Recording every episode by default (episode_trigger=lambda e: True)
+        env = RecordVideo(env,
+                        video_folder=args.save,
+                        name_prefix=f'{args.strategy}-video',
+                        episode_trigger=lambda e: True,
+                        disable_logger=True)
 
     # Select the swinging strategy based on user argument
     if args.strategy == "none":

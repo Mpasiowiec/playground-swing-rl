@@ -108,7 +108,7 @@ MIT License. See `LICENSE`.
 
 ### Acknowledgements
 - Built with Gymnasium and Stable-Baselines3.
-- Physics equations adapted from the paper “Initial phase and frequency modulations of pumping a playground swing”.
+- Physics equations adapted from the paper “Initial phase and frequency modulations of pumping a playground swing” [link](https://journals.aps.org/pre/pdf/10.1103/PhysRevE.107.044203).
 - Inspiration and conceptual explanation from Matthew Chapman’s blog post “The physics of a playground swing” [link](https://zmatt.net/physics-of-a-playground-swing/).
 
 

@@ -10,7 +10,7 @@ setup(name='psrl',
             'matplotlib==3.7.0',
             'scipy',
             'pandas==2.2.2',
-            'gymnasium==1.1.1',
+            'gymnasium>=0.28.1,<0.30',
             'imageio==2.37.0',
             'stable-baselines3==2.3.2'
       ],

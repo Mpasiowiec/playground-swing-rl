@@ -82,7 +82,7 @@ pytest -q
 ```
 
 ### Example results
-Sample videos are in `videos/` and models/logs contain TensorBoard data. Use the export script to generate standalone images for GitHub.
+Sample gifs are in `gifs/` and models/logs contain TensorBoard data. Use the export script to generate standalone images for GitHub.
 
 #### Learning curves (A2C)
 
@@ -95,10 +95,11 @@ Evaluation: mean reward
 ![Evaluation mean reward](reports/plots/PlaygroundSwingEnv-v0_A2C_1__eval_mean_reward.png)
 
 #### Demo
+Behavior of trained agent:
+![Trained policy demo](gifs/trained-video-episode-0.gif)
 
-![Trained policy demo](videos/trained-video-episode-0.gif)
-
-[Watch the MP4 instead](videos/trained-video-episode-0.mp4)
+Agent implementing FFM (Forced Frequency Motion) policy:
+![Trained policy demo](gifs/ffm-video-episode-0.gif)
 
 ### License
 MIT License. See `LICENSE`.

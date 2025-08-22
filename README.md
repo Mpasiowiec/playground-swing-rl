@@ -6,7 +6,7 @@ Reinforcement Learning project that learns to pump a playground swing. It includ
 - **Custom environment**: Physics-inspired swing dynamics with rich render modes: `human`, `human_plots`, `rgb_array`, `rgb_array_plots`.
 - **Training**: One-liner training using Stable-Baselines3 with checkpoints, best-model saving, and TensorBoard logging.
 - **Demos**: Compare strategies: none, random, feature-based policy (FFM), or a trained RL agent. Video recordings included in `videos/`.
-- **Metrics export**: Script to export TensorBoard scalars to CSV and Matplotlib plots for fast sharing.
+- **Results plots**: Simple script to plot rewards directly from `reports/`.
 - **Tests**: Basic env compliance and random-step smoke test.
 
 ### Project structure
@@ -16,7 +16,7 @@ playground_swing_rl/       # Environment package
 scripts/
   train_agent.py           # SB3 training entrypoint
   demo.py                  # Run strategies / record videos
-  export_tensorboard.py    # Export TensorBoard scalars and plots
+  plot_from_csv.py         # Plot rewards from CSVs in reports/
 models/
   logs/PlaygroundSwingEnv-v0_A2C_*/  # TensorBoard runs
   PlaygroundSwingEnv-v0_A2C_*/       # Saved checkpoints & best model
@@ -34,7 +34,7 @@ python -m venv .venv
 
 pip install --upgrade pip
 pip install -e .
-pip install stable-baselines3[extra] tensorboard matplotlib numpy gymnasium
+pip install stable-baselines3[extra] matplotlib numpy gymnasium
 ```
 
 If you prefer, you can also use the provided `swing-rl` virtual environment in the repo, but a fresh venv is recommended.
@@ -59,11 +59,11 @@ python scripts/demo.py --strategy ffm --episodes 1 --render rgb_array_plots --sa
 python scripts/demo.py --strategy trained --sb3_algo A2C --model_dir models\\PlaygroundSwingEnv-v0_A2C_1\\best_model.zip --render rgb_array_plots --episodes 1 --save videos/
 ```
 
-#### 3) Export TensorBoard curves to CSV and plots
+#### 3) Plot rewards from CSVs
+Assumes CSVs are present under `reports/` (provided in this repo). Create two plots for training and evaluation:
 ```bash
-python scripts/export_tensorboard.py --logdir models/logs --outdir reports
+python scripts/plot_from_csv.py --csvdir reports --outdir reports/plots
 ```
-This will create per-run CSVs and PNG plots for all scalar tags it finds.
 
 ### Environment details
 - Observation: `[theta, theta_dot, phi, phi_dot, psi, psi_dot]`
@@ -84,10 +84,26 @@ pytest -q
 ### Example results
 Sample videos are in `videos/` and models/logs contain TensorBoard data. Use the export script to generate standalone images for GitHub.
 
+#### Learning curves (A2C)
+
+Training: episode mean reward (rollout)
+
+![Training rollout episode mean reward](reports/plots/PlaygroundSwingEnv-v0_A2C_1__rollout_ep_rew_mean.png)
+
+Evaluation: mean reward
+
+![Evaluation mean reward](reports/plots/PlaygroundSwingEnv-v0_A2C_1__eval_mean_reward.png)
+
+#### Demo video
+
+<video src="videos/trained-video-episode-0.mp4" controls width="640"></video>
+
 ### License
 MIT License. See `LICENSE`.
 
 ### Acknowledgements
 - Built with Gymnasium and Stable-Baselines3.
+- Physics equations adapted from the paper “Initial phase and frequency modulations of pumping a playground swing”.
+- Inspiration and conceptual explanation from Matthew Chapman’s blog post “The physics of a playground swing” [link](https://zmatt.net/physics-of-a-playground-swing/).
 
 

@@ -1,6 +1,6 @@
 ## Playground Swing RL
 
-Reinforcement Learning project that learns to pump a playground swing. It includes a custom Gymnasium environment (`PlaygroundSwingEnv-v0`), Stable-Baselines3 training script, demo playback with reference strategies, tests, and tooling to export learning curves from TensorBoard logs.
+Reinforcement Learning project that learns to pump a playground swing. It includes a custom Gymnasium environment (`PlaygroundSwingEnv-v0`), Stable-Baselines3 training script, demo playback with reference strategies, tests.
 
 Status: ![CI](https://github.com/Mpasiowiec/playground-swing-rl/actions/workflows/ci.yml/badge.svg)
 
@@ -30,8 +30,7 @@ python scripts/demo.py --strategy trained --sb3_algo A2C --model_dir models\\Pla
 ### Features
 - **Custom environment**: Physics-inspired swing dynamics with rich render modes: `human`, `human_plots`, `rgb_array`, `rgb_array_plots`.
 - **Training**: One-liner training using Stable-Baselines3 with checkpoints, best-model saving, and TensorBoard logging.
-- **Demos**: Compare strategies: none, random, feature-based policy (FFM), or a trained RL agent. Video recordings included in `videos/`.
-- **Results plots**: Simple script to plot rewards directly from `reports/`.
+- **Demos**: Compare strategies: none, random, feature-based policy (FFM), or a trained RL agent. Gifs included in `gifs/`.
 - **Tests**: Basic env compliance and random-step smoke test.
 
 ### Project structure
@@ -82,12 +81,6 @@ tensorboard --logdir models/logs
 ```bash
 python scripts/demo.py --strategy ffm --episodes 1 --render rgb_array_plots --save videos/
 python scripts/demo.py --strategy trained --sb3_algo A2C --model_dir models\PlaygroundSwingEnv-v0_A2C_1\best_model.zip --render rgb_array_plots --episodes 1 --save videos/
-```
-
-#### 3) Plot rewards from CSVs
-Assumes CSVs are present under `reports/` (provided in this repo). Create two plots for training and evaluation:
-```bash
-python scripts/plot_from_csv.py --csvdir reports --outdir reports/plots
 ```
 
 ### Environment details

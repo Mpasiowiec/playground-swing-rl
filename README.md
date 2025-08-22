@@ -56,7 +56,7 @@ tensorboard --logdir models/logs
 #### 2) Run a demo / record video
 ```bash
 python scripts/demo.py --strategy ffm --episodes 1 --render rgb_array_plots --save videos/
-python scripts/demo.py --strategy trained --sb3_algo A2C --model_dir models\\PlaygroundSwingEnv-v0_A2C_1\\best_model.zip --render rgb_array_plots --episodes 1 --save videos/
+python scripts/demo.py --strategy trained --sb3_algo A2C --model_dir models\PlaygroundSwingEnv-v0_A2C_1\best_model.zip --render rgb_array_plots --episodes 1 --save videos/
 ```
 
 #### 3) Plot rewards from CSVs
@@ -88,15 +88,17 @@ Sample videos are in `videos/` and models/logs contain TensorBoard data. Use the
 
 Training: episode mean reward (rollout)
 
-![Training rollout episode mean reward](reports/plots/PlaygroundSwingEnv-v0_A2C_1_rollout_ep_rew_mean.png)
+![Training rollout episode mean reward](reports/plots/PlaygroundSwingEnv-v0_A2C_1__rollout_ep_rew_mean.png)
 
 Evaluation: mean reward
 
-![Evaluation mean reward](reports/plots/PlaygroundSwingEnv-v0_A2C_1_eval_mean_reward.png)
+![Evaluation mean reward](reports/plots/PlaygroundSwingEnv-v0_A2C_1__eval_mean_reward.png)
 
-#### Demo video
+#### Demo
 
-<video src="videos/trained-video-episode-0.mp4" controls width="640"></video>
+![Trained policy demo](videos/trained-video-episode-0.gif)
+
+[Watch the MP4 instead](videos/trained-video-episode-0.mp4)
 
 ### License
 MIT License. See `LICENSE`.

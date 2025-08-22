@@ -12,7 +12,7 @@ setup(name='psrl',
             'pandas==2.2.2',
             'gymnasium==1.1.1',
             'imageio==2.37.0',
-            'stable-baselines3'
+            'stable-baselines3==2.3.2'
       ],
       extras_require={
             "dev": [

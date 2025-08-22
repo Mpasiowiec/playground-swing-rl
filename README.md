@@ -2,7 +2,7 @@
 
 Reinforcement Learning project that learns to pump a playground swing. It includes a custom Gymnasium environment (`PlaygroundSwingEnv-v0`), Stable-Baselines3 training script, demo playback with reference strategies, tests.
 
-Status: ![CI](https://github.com/Mpasiowiec/playground-swing-rl/actions/workflows/ci.yml/badge.svg)
+Status: ![CI](https://github.com/Mpasiowiec/playground-swing-rl/actions/workflows/ci.yml/badge.svg) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue) ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 ### Quick start
 
@@ -20,11 +20,13 @@ python -m venv .venv
 pip install --upgrade pip
 pip install -e .
 pip install stable-baselines3[extra] gymnasium matplotlib numpy
+# Reproducible install
+pip install -r requirements.txt
 
 # 4) Run a demo
 python scripts/demo.py --strategy ffm --episodes 1 --render rgb_array_plots --save gifs/
 # Or use a trained model (adjust path if different)
-python scripts/demo.py --strategy trained --sb3_algo A2C --model_dir models\\PlaygroundSwingEnv-v0_A2C_1\\best_model.zip --render rgb_array_plots --episodes 1 --save gifs/
+python scripts/demo.py --strategy trained --sb3_algo A2C --model_dir models\PlaygroundSwingEnv-v0_A2C_1\best_model.zip --render rgb_array_plots --episodes 1 --save gifs/
 ```
 
 ### Features

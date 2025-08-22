@@ -88,11 +88,11 @@ Sample videos are in `videos/` and models/logs contain TensorBoard data. Use the
 
 Training: episode mean reward (rollout)
 
-![Training rollout episode mean reward](reports/plots/PlaygroundSwingEnv-v0_A2C_1__rollout_ep_rew_mean.png)
+![Training rollout episode mean reward](plots/PlaygroundSwingEnv-v0_A2C_1_rollout_ep_rew_mean.png)
 
 Evaluation: mean reward
 
-![Evaluation mean reward](reports/plots/PlaygroundSwingEnv-v0_A2C_1__eval_mean_reward.png)
+![Evaluation mean reward](plots/PlaygroundSwingEnv-v0_A2C_1_eval_mean_reward.png)
 
 #### Demo
 

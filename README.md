@@ -96,9 +96,11 @@ Evaluation: mean reward
 
 #### Demo
 Behavior of trained agent:
+
 ![Trained policy demo](gifs/trained-video-episode-0.gif)
 
 Agent implementing FFM (Forced Frequency Motion) policy:
+
 ![Trained policy demo](gifs/ffm-video-episode-0.gif)
 
 ### License
